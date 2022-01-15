@@ -19,3 +19,38 @@ func PopCount(x uint64) int {
 		pc[byte(x>>(6*8))] +
 		pc[byte(x>>(7*8))])
 }
+
+func PopCountViaLoop(x uint64) int {
+	var popCount int
+
+	for i := 0; i < 8; i++ {
+		res := x >> (i * 8)
+		popCount += int(pc[byte(res)])
+	}
+
+	return popCount
+}
+
+func PopCountByRightShift(x uint64) int {
+	var popCount int
+	shift := uint64(1)
+
+	for i := 0; i < 64; i++ {
+		if x&shift > 0 {
+			popCount++
+		}
+		x = x >> shift
+	}
+
+	return popCount
+}
+
+func PopCountByRightostBit(x uint64) int {
+	var popCount int
+
+	for x != 0 {
+		x = x&(x-1)
+	}
+
+	return popCount
+}
