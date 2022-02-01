@@ -45,11 +45,12 @@ func PopCountByRightShift(x uint64) int {
 	return popCount
 }
 
-func PopCountByRightostBit(x uint64) int {
+func PopCountByRightMostBit(x uint64) int {
 	var popCount int
 
 	for x != 0 {
 		x = x&(x-1)
+		popCount++
 	}
 
 	return popCount

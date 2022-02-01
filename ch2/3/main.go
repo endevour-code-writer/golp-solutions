@@ -11,7 +11,7 @@ func main()  {
 	pc := popcount.PopCount(max)
 	pcl := popcount.PopCountViaLoop(max)
 	pcshift := popcount.PopCountByRightShift(max)
-	pclmb := popcount.PopCountByRightShift(max)
+	pclmb := popcount.PopCountByRightMostBit(max)
 	fmt.Println(pc)
 	fmt.Println(pcl)
 	fmt.Println(pcshift)
