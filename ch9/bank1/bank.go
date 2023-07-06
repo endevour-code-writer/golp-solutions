@@ -9,16 +9,42 @@ package bank
 
 var deposits = make(chan int) // send amount to deposit
 var balances = make(chan int) // receive balance
+var withdrawals = make(chan withdrawal) // withdraw certain funds possibility
 
-func Deposit(amount int) { deposits <- amount }
-func Balance() int       { return <-balances }
+type withdrawal struct {
+	amount int
+	withdrawals chan bool
+}
+
+func Deposit(amount int) {
+	deposits <- amount
+}
+
+func Balance() int {
+	return <-balances
+}
+
+func Withdraw(amount int) bool {
+	isWithdrawable := make(chan bool)
+	withdrawals <- withdrawal{amount, isWithdrawable}
+
+	return <-isWithdrawable
+}
 
 func teller() {
 	var balance int // balance is confined to teller goroutine
+
 	for {
 		select {
 		case amount := <-deposits:
 			balance += amount
+		case wd := <- withdrawals:
+			if wd.amount < balance {
+				balance -= wd.amount
+				wd.withdrawals <- true
+			} else {
+				wd.withdrawals <- false
+			}
 		case balances <- balance:
 		}
 	}
