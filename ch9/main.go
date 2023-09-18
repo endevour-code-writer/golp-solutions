@@ -1,17 +1,11 @@
 package main
 
-import (
-	bank "GoTheProgrammingLanguage/ch9/bank1"
-	"fmt"
-)
+import
+
+// bank "GoTheProgrammingLanguage/ch9/bank1"
+memo "GoTheProgrammingLanguage/ch9/memo4"
 
 func main() {
-	bank.Deposit(100)
-	fmt.Println(bank.Balance())
+	memo.Test()
 
-	withdrawal := bank.Withdraw(99)
-	withdrawal2 := bank.Withdraw(99)
-	fmt.Println(withdrawal)
-	fmt.Println(withdrawal2)
-	fmt.Println(bank.Balance())
 }

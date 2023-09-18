@@ -9,17 +9,25 @@
 // This implementation uses a Mutex.
 package memo
 
-import "sync"
+import (
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"os"
+	"sync"
+)
+
+var done = make(chan struct{})
 
 // Func is the type of the function to memoize.
-type Func func(string) (interface{}, error)
+type Func func(key string, done chan struct{}) (interface{}, error)
 
 type result struct {
 	value interface{}
 	err   error
 }
 
-//!+
+// !+
 type entry struct {
 	res   result
 	ready chan struct{} // closed when res is ready
@@ -46,7 +54,7 @@ func (memo *Memo) Get(key string) (value interface{}, err error) {
 		memo.cache[key] = e
 		memo.mu.Unlock()
 
-		e.res.value, e.res.err = memo.f(key)
+		e.res.value, e.res.err = memo.f(key, done)
 
 		close(e.ready) // broadcast ready condition
 	} else {
@@ -55,7 +63,73 @@ func (memo *Memo) Get(key string) (value interface{}, err error) {
 
 		<-e.ready // wait for ready condition
 	}
+
+	select {
+	case <-done:
+		e.res.value = nil
+	default:
+	}
+
 	return e.res.value, e.res.err
+}
+
+func InitCancelListener() {
+	go func() {
+		os.Stdin.Read(make([]byte, 1)) // read a single byte
+		close(done)
+	}()
+}
+
+func IsCancelled() bool {
+	select {
+	case <-done:
+		return true
+	default:
+		return false
+	}
+}
+
+func Test() {
+	m := New(httpGetBody)
+	incomingUrls := []string{
+		"https://golang.org",
+		"https://godoc.org",
+		"https://play.golang.org",
+		"https://golang.org",
+		"https://godoc.org",
+		"https://pkg.go.dev/os",
+	}
+	InitCancelListener()
+
+	for i, url := range incomingUrls {
+		fmt.Println(url)
+		_, err := m.Get(url)
+
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		if IsCancelled() {
+			fmt.Println("The operation is cancelled")
+
+			unprocessed := incomingUrls[i : len(incomingUrls)-1]
+
+			for _, url := range unprocessed {
+				fmt.Printf("The url %v was unprocessed\n", url)
+			}
+
+			return
+		}
+	}
+}
+
+func httpGetBody(url string, done chan struct{}) (interface{}, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	return ioutil.ReadAll(resp.Body)
 }
 
 //!-
