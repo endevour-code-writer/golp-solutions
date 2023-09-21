@@ -9,10 +9,20 @@
 // This implementation uses a monitor goroutine.
 package memo
 
+import (
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"os"
+)
+
 //!+Func
 
+var done = make(chan struct{})
+var test = make(chan int)
+
 // Func is the type of the function to memoize.
-type Func func(key string) (interface{}, error)
+type Func func(key string, done chan struct{}) (interface{}, error)
 
 // A result is the result of calling a Func.
 type result struct {
@@ -48,6 +58,12 @@ func (memo *Memo) Get(key string) (interface{}, error) {
 	response := make(chan result)
 	memo.requests <- request{key, response}
 	res := <-response
+
+	if IsCancelled() {
+		res.value = nil
+	}
+	// fmt.Println(res.value)
+	// fmt.Println()
 	return res.value, res.err
 }
 
@@ -65,6 +81,14 @@ func (memo *Memo) server(f Func) {
 			// This is the first request for this key.
 			e = &entry{ready: make(chan struct{})}
 			cache[req.key] = e
+
+			if IsCancelled() {
+				for range memo.requests {
+				}
+
+				return
+			}
+
 			go e.call(f, req.key) // call f(key)
 		}
 		go e.deliver(req.response)
@@ -73,8 +97,16 @@ func (memo *Memo) server(f Func) {
 
 func (e *entry) call(f Func, key string) {
 	// Evaluate the function.
-	e.res.value, e.res.err = f(key)
+	e.res.value, e.res.err = f(key, done)
 	// Broadcast the ready condition.
+
+	if IsCancelled() {
+		e.res.value = nil
+		close(e.ready)
+
+		return
+	}
+
 	close(e.ready)
 }
 
@@ -83,6 +115,72 @@ func (e *entry) deliver(response chan<- result) {
 	<-e.ready
 	// Send the result to the client.
 	response <- e.res
+
+	if IsCancelled() {
+		return
+	}
+}
+
+func Test() {
+	m := New(httpGetBody)
+
+	incomingUrls := []string{
+		"https://golang.org",
+		"https://godoc.org",
+		"https://play.golang.org",
+		"https://golang.org",
+		"https://godoc.org",
+		"https://pkg.go.dev/os",
+	}
+
+	InitCancelListener()
+
+	for i, url := range incomingUrls {
+		fmt.Println(url)
+		_, err := m.Get(url)
+
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		if IsCancelled() {
+			fmt.Println("The operation is cancelled")
+
+			unprocessed := incomingUrls[i : len(incomingUrls)-1]
+
+			for _, url := range unprocessed {
+				fmt.Printf("The url %v was unprocessed\n", url)
+			}
+
+			return
+		}
+	}
+}
+
+func InitCancelListener() {
+	go func() {
+		os.Stdin.Read(make([]byte, 1)) // read a single byte
+		close(done)
+	}()
+}
+
+func IsCancelled() bool {
+	select {
+	case <-done:
+		return true
+	default:
+		return false
+	}
+}
+
+func httpGetBody(url string, done chan struct{}) (interface{}, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	return ioutil.ReadAll(resp.Body)
 }
 
 //!-monitor
