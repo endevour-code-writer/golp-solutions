@@ -1,34 +1,35 @@
 package workspace_imports
 
 import (
-	"fmt"
-	"os"
+	"encoding/json"
 	"os/exec"
 )
 
 const (
 	GO_LIST_JSON = "-json"
+	IMPORTS      = "Imports"
 )
 
-type listResult struct {
+type packageImports struct {
+	Imports []string
 }
 
-func GetPackageImportsByPackageName(packageName string) ([]byte, error) {
-	pkgMetadata, err := getGoListDataByFlag(packageName, GO_LIST_JSON)
+func GetPackageImportsByPackageName(packageName string) ([]string, error) {
+	var pkgImports packageImports
 
-	fmt.Println(string(pkgMetadata))
-	os.Exit(21)
+	pkgMetadata, err := getGoListDataByFlag(packageName, GO_LIST_JSON)
 
 	if err != nil {
 		return nil, err
 	}
 
-	// err = json.Unmarshal(pkgMetadata, v)
-	// // jsonDecoder := json.NewDecoder(strings.NewReader(string(pkgMetadata)))
+	err = json.Unmarshal(pkgMetadata, &pkgImports)
 
-	// fmt.Println(err)
-	// os.Exit(25)
-	return pkgMetadata, nil
+	if err != nil {
+		return nil, err
+	}
+
+	return pkgImports.Imports, nil
 
 }
 
