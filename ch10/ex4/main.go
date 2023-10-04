@@ -14,11 +14,12 @@ func main() {
 		packageName = args[0]
 	}
 
-	pkgImports, err := workspace_imports.GetPackageImportsByPackageName(packageName)
+	pkgImports, err := workspace_imports.GetAllTransitivelDependWorkspacePackages(packageName)
 
 	if err != nil {
 		fmt.Println(err)
 	}
 
 	fmt.Println(pkgImports)
+	fmt.Println(len(pkgImports))
 }
