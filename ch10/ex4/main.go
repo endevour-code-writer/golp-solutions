@@ -20,6 +20,14 @@ func main() {
 		fmt.Println(err)
 	}
 
-	fmt.Println(pkgImports)
-	fmt.Println(len(pkgImports))
+	pkgImportsViaDeps, err := workspace_imports.GetAllTransitivelDependWorkspacePackagesViaDeps(packageName)
+
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Printf("imports via recursions:\n %v\n", pkgImports)
+	fmt.Printf("number imports via recursions:\n %v\n", len(pkgImports))
+	fmt.Printf("imports via deps:\n %v\n", pkgImportsViaDeps)
+	fmt.Printf("number imports via deps:\n %v\n", len(pkgImportsViaDeps))
 }

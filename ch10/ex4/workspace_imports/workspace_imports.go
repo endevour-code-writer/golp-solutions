@@ -14,6 +14,7 @@ const (
 
 type packageImports struct {
 	Imports []string
+	Deps    []string
 }
 
 func GetPackageImportsByPackageName(packageName string) ([]string, error) {
@@ -32,6 +33,24 @@ func GetPackageImportsByPackageName(packageName string) ([]string, error) {
 	}
 
 	return pkgImports.Imports, nil
+}
+
+func GetAllTransitivelDependWorkspacePackagesViaDeps(pkgName string) ([]string, error) {
+	var pkgImports packageImports
+
+	pkgMetadata, err := getGoListDataByFlag(pkgName, GO_LIST_JSON)
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = json.Unmarshal(pkgMetadata, &pkgImports)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return pkgImports.Deps, nil
 }
 
 func GetAllTransitivelDependWorkspacePackages(pkgName string) ([]string, error) {
@@ -57,7 +76,7 @@ func collectPackageNames(currentPkgNames, allPackageNames []string, iteration in
 		if slices.Contains(allPackageNames, importPkgName) {
 			continue
 		}
-		iteration++
+
 		allPackageNames = append(allPackageNames, importPkgName)
 		descendantPkgNames, err := GetPackageImportsByPackageName(importPkgName)
 
